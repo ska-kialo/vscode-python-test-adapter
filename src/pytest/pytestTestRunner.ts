@@ -66,7 +66,8 @@ class PythonTestExplorerDiscoveryOutputPlugin(object):
         tests = self.__extract_discovered_tests(session)
         errors = self.__extract_discovery_errors()
         print(json.dumps({'tests': tests,
-                            'errors': errors}))
+                            'errors': errors,
+                            'rootdir': str(session.config.rootdir)}))
         print('==DISCOVERED TESTS END==')
 
     def pytest_collectreport(self, report):
@@ -167,7 +168,7 @@ pytest.main(sys.argv[1:], plugins=[PythonTestExplorerDiscoveryOutputPlugin()])`;
         await testExecution.complete();
         this.testExecutions.delete(test);
         this.logger.log('info', 'Test execution completed');
-        const states = await parseTestStates(file, config.getCwd());
+        const states = await parseTestStates(file, test);
         cleanupCallback();
         return states;
     }

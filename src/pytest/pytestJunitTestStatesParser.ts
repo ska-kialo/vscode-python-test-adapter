@@ -45,7 +45,7 @@ interface ITestCaseResult {
 
 export async function parseTestStates(
     outputXmlFile: string,
-    cwd: string
+    testName: string
 ): Promise<TestEvent[]> {
     return new Promise<any>((resolve, reject) => {
         fs.readFile(outputXmlFile, 'utf8', (readError, data) => {
@@ -59,7 +59,7 @@ export async function parseTestStates(
                 }
 
                 try {
-                    const results = parseTestResults(parserResult, cwd);
+                    const results = parseTestResults(parserResult, testName);
                     resolve(results);
                 } catch (exception) {
                     reject(`Can not parse test results: ${exception}`);
@@ -69,7 +69,12 @@ export async function parseTestStates(
     });
 }
 
-function parseTestResults(parserResult: any, cwd: string) {
+function splitFileName(testName: string): string {
+    return testName.split('::')[0];
+}
+
+function parseTestResults(parserResult: any, testName: string) {
+    const testFileName = splitFileName(testName);
     if (!parserResult) {
         return [];
     }
@@ -80,12 +85,12 @@ function parseTestResults(parserResult: any, cwd: string) {
         if (!Array.isArray(testSuiteResult.testcase)) {
             return [];
         }
-        return testSuiteResult.testcase.map(testcase => mapToTestState(testcase, cwd)).filter(x => x);
+        return testSuiteResult.testcase.map(testcase => mapToTestState(testcase, testFileName)).filter(x => x);
     }).reduce((r, x) => r.concat(x), []);
 }
 
-function mapToTestState(testcase: ITestCaseResult, cwd: string) {
-    const testId = buildTestName(cwd, testcase.$);
+function mapToTestState(testcase: ITestCaseResult, testFileName: string) {
+    const testId = buildTestName(testcase.$, testFileName);
     if (!testId) {
         return undefined;
     }
@@ -124,11 +129,10 @@ function extractErrorMessage(errors: Array<{ _: string, $: { message: string } }
     return errors.map(e => e.$.message + EOL + e._).join(EOL);
 }
 
-function buildTestName(cwd: string, test: ITestCaseDescription): string | undefined {
-    if (!test || !test.file || !test.name) {
+function buildTestName(test: ITestCaseDescription, module: string): string | undefined {
+    if (!test || !test.file || !test.name || !module) {
         return undefined;
     }
-    const module = path.resolve(cwd, test.file);
     if (!test.classname) {
         return `${module}`;
     }

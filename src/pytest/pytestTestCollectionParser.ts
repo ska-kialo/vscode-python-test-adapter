@@ -10,6 +10,7 @@ const DISCOVERED_TESTS_END_MARK = '==DISCOVERED TESTS END==';
 interface IDiscoveryResultJson {
     tests: Array<{ id: string, line: number }>;
     errors: Array<{ file: string, message: number }>;
+    rootdir: string;
 }
 
 export function parseTestSuites(content: string, cwd: string): {
@@ -20,10 +21,11 @@ export function parseTestSuites(content: string, cwd: string): {
     const to = content.indexOf(DISCOVERED_TESTS_END_MARK);
     const discoveredTestsJson = content.substring(from + DISCOVERED_TESTS_START_MARK.length, to);
     const discoveryResult = JSON.parse(discoveredTestsJson) as IDiscoveryResultJson;
+    const rootdir = discoveryResult.rootdir;
     const allTests = (discoveryResult.tests || [])
         .map(line => ({ ...line, id: line.id.replace(/::\(\)/g, '') }))
         .filter(line => line.id)
-        .map(line => splitModule(line, cwd))
+        .map(line => splitModule(line, rootdir))
         .filter(line => line)
         .map(line => line!);
     const suites = Array.from(groupBy(allTests, t => t.modulePath).entries())
@@ -119,14 +121,14 @@ function splitTest(test: ITestCaseSplit) {
     };
 }
 
-function splitModule(test: { id: string, line: number }, cwd: string) {
+function splitModule(test: { id: string, line: number }, rootdir: string) {
     const separatorIndex = test.id.indexOf('::');
     if (separatorIndex < 0) {
         return null;
     }
     return {
         // Use full path for matching with test results from junit-xml
-        modulePath: path.resolve(cwd, test.id.substring(0, separatorIndex)),
+        modulePath: path.resolve(rootdir, test.id.substring(0, separatorIndex)),
         testPath: test.id.substring(separatorIndex + 2),
         line: test.line,
     };
